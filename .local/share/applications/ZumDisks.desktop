@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=ZumDisks
+Name[el]=ZumDisks
+GenericName=ZumDisks
+GenericName[el]=ZumDisks
+Comment=Zenity Mount / Unmount Volumes
+Comment[el]=Προσάρτηση / Αποπροσάρτηση Δίσκων μέσω Zenity
+Type=Application
+TryExec=ZumDisks
+Exec=ZumDisks
+Icon=ZumDisks
+Categories=System;Utility;

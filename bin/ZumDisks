@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+
+#
+#    ZumDisks - { Mount and Unmount Disks }
+#    Copyright (C) 2015  Stamatis X. Mavrogeorgis
+#
+#    Author's Email: stamatis@zirconix.net
+#    Author's Website: http://www.istos.info
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+# version 0.1.3 Added labels in mount list
+# version 0.1.2 Added messages in mount list
+# version 0.1.1 Improvements on initial built
+# version 0.1.0 Initial concept
+
+showVersion() {
+  echo $(grep '^# version' $(which ${0##*/}) | cut -f3 -d\  | sort -u | tail -1)
+}
+
+[[ $1 == '-V' ]] || [[ $1 == '-v' ]] && showVersion && exit
+
+[[ -x $(which gxmessage) ]] && g='g'
+
+MESSAGECMD="${g}xmessage"
+
+[[ ! -x $(which zenity) ]] && $MESSAGECMD -title "${0##*/}" "This program requires zenity to run" && exit
+
+[[ $(pgrep -au $USER zenity | grep "\-\-name=${0##*/}") ]] && { zenity 2>/dev/null --error --text "${0##*/} is already running!" & } && exit
+
+MYVERSION=$(grep '^# version' $0 | cut -f3 -d\  | sort -r | head -1)
+
+swxstyle="gksudo -S"
+swmstyle="--"
+swdstyle=""
+
+[[ -x $(which udisksctl) ]] && swxstyle='' && mntctl='ctl' && swmstyle="" && swdstyle=" -b"
+
+UDISKSMOUNTCMD="udisks${mntctl} ${swmstyle}mount$swdstyle"
+UDISKSUNMOUNTCMD="udisks${mntctl} ${swmstyle}unmount$swdstyle"
+
+TLD=/tmp/sd_ldevices
+TME=/tmp/zumdisks_errors && touch $TME
+
+xcode=0
+
+while [ $xcode -eq 0 ]; do {
+
+  TMPLDEVICELIST=$TLD
+
+  DEVICELIST=$(lsblk -nl |
+               egrep 'part|rom' |
+               grep 's[dr]' |
+               egrep -iv 'swap| 1k ' |
+               cut -f1 -d' ' |
+               awk '{ print "/dev/" $1 }' |
+               paste -s -d' ')
+
+  { ls 2>/dev/null --full-time /dev/disk/by-label || \
+    ls 2>/dev/null --full-time /dev/disk/by-uuid || \
+    ls 2>/dev/null --full-time /dev/disk/by-id; } | 
+  grep -iv '^total ' |
+  awk '{ print $9,$11 }' |
+  sed -e 's@../@@g' -e 's@ @ /dev/@g' |
+  awk '{ print $2, $1 }' |
+  sort >$TMPLDEVICELIST
+
+  declare -A LDEVICE
+
+  for i in $DEVICELIST; do LDEVICE[$i]=$(grep "$i " $TMPLDEVICELIST | cut -f2 -d' '); done
+  for key in "${!LDEVICE[@]}"; do echo $key ${LDEVICE[$key]}; done >$TMPLDEVICELIST
+
+  TMPMOUNTED=$(mount | grep '/dev/s[dr]' | cut -f1 -d' ' | sort | paste -s -d'|')
+
+  TMPUNMOUNTABLE=$(mount | grep '/dev/s[dr]' | egrep -v ' / | /lib | /opt | /home | /usr | /run | /usr/lib | /var ' | cut -f1 -d' ' | sort | paste -s -d' ')
+
+  TMPMOUNTABLE=$(egrep -v "$TMPMOUNTED" $TMPLDEVICELIST | paste -s -d'|')
+
+  response=$(zenity 2>/dev/null \
+             --ok-label="Mount/Unmount/Refresh" \
+             --cancel-label="Quit ${0##*/}" \
+             --title="${0##*/} $MYVERSION" \
+             --name="${0##*/} $MYVERSION" \
+             --text="Mount / Unmount Devices" \
+             --forms --add-combo="Mountable Devices:" \
+             --combo-values="$([[ -n $TMPMOUNTABLE ]] && for key in "$TMPMOUNTABLE"; do echo -n "|$key ${LDEVICE[$key]}"; done)" \
+             --add-list="Mounted Devices:" \
+             --list-values="$(df -Th | grep '/dev/s[dr]' | awk '{ print $2,$3,$6,$1,$7 }' | sort | paste -s -d'|')|--------------------------------------------|M E S S A G E S :|--------------------------------------------|$(cat $TME)" \
+             --add-combo="Unmountable Devices:" \
+             --combo-values="$([[ -n $TMPUNMOUNTABLE ]] && for key in $TMPUNMOUNTABLE; do echo -n "|$key ${LDEVICE[$key]}"; done)" \
+             --add-combo="Click Drop-down Help:" \
+              --combo-values="* Select a device from the 'Mountable Devices'|drop-down menu and press the button labeled|'Mount/Unmount/Refresh' to mount it|--------------------------------------------------|* To unmount a device, select it from the|'Unmountable Devices' drop-down menu and|press the 'Mount/Unmount/Refresh' button|--------------------------------------------------|* To mount one device and unmount another one|simultaneously, select them both from their|drop-down menus and press the button labeled|'Mount/Unmount/Refresh'|--------------------------------------------------|* To just refresh the devices lists, press the|'Mount/Unmount/Refresh' button while no|devices are selected on either drop-down menu|--------------------------------------------------|* To exit the program press 'Quit ${0##*/}'") 
+
+  xcode=$?
+
+  response=$(echo $response | cut -f1-3 -d'|')
+
+  TOMOUNT=$(echo $response | cut -f1 -d'|' | cut -f1 -d' '); echo $TOMOUNT
+  TOUNMOUNT=$(echo $response | cut -f3 -d'|' | cut -f1 -d' '); echo $TOUNMOUNT
+
+  [[ -n $TOMOUNT ]] && \
+  [[ -b $TOMOUNT ]] && \
+  { [[ -n $swxstyle ]] && \
+  $swxstyle "$UDISKSMOUNTCMD $TOMOUNT" >$TME 2>&1 || \
+  $UDISKSMOUNTCMD $TOMOUNT >$TME 2>&1; }
+
+  [[ -n $TOUNMOUNT ]] && \
+  [[ -b $TOUNMOUNT ]] && \
+  { [[ -n $swxstyle ]] && \
+  $swxstyle "$UDISKSUNMOUNTCMD $TOUNMOUNT" >$TME 2>&1 || \
+  $UDISKSUNMOUNTCMD $TOUNMOUNT >$TME 2>&1; }
+
+}; done
+
+[[ -f $TLD ]] && rm $TLD
+[[ -f $TME ]] && rm $TME
+
