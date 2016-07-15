@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 
 #
-#    ZumDisks - { Mount and Unmount Disks }
-#    Copyright (C) 2015  Stamatis X. Mavrogeorgis
+#    Copyright (C) 2015-2016  Stamatis X. Mavrogeorgis
 #
 #    Author's Email: stamatis@zirconix.net
-#    Author's Website: http://www.istos.info
+#    Author's Website: http://www.istos.xyz
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
