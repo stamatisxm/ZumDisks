@@ -20,6 +20,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+# version 0.1.4 Fixed swap partition hiding
 # version 0.1.3 Added labels in mount list
 # version 0.1.2 Added messages in mount list
 # version 0.1.1 Improvements on initial built
@@ -59,12 +60,11 @@ while [ $xcode -eq 0 ]; do {
 
   TMPLDEVICELIST=$TLD
 
-  DEVICELIST=$(lsblk -nl |
-               egrep 'part|rom' |
+  DEVICELIST=$(lsblk -pno KNAME,FSTYPE,TYPE,SIZE |
                grep 's[dr]' |
-               egrep -iv 'swap| 1k ' |
+               egrep -iv 'disk|swap' |
                cut -f1 -d' ' |
-               awk '{ print "/dev/" $1 }' |
+               awk '{ print $1 }' |
                paste -s -d' ')
 
   { ls 2>/dev/null --full-time /dev/disk/by-label || \
@@ -100,7 +100,7 @@ while [ $xcode -eq 0 ]; do {
              --add-combo="Unmountable Devices:" \
              --combo-values="$([[ -n $TMPUNMOUNTABLE ]] && for key in $TMPUNMOUNTABLE; do echo -n "|$key ${LDEVICE[$key]}"; done)" \
              --add-combo="Click Drop-down Help:" \
-              --combo-values="* Select a device from the 'Mountable Devices'|drop-down menu and press the button labeled|'Mount/Unmount/Refresh' to mount it|--------------------------------------------------|* To unmount a device, select it from the|'Unmountable Devices' drop-down menu and|press the 'Mount/Unmount/Refresh' button|--------------------------------------------------|* To mount one device and unmount another one|simultaneously, select them both from their|drop-down menus and press the button labeled|'Mount/Unmount/Refresh'|--------------------------------------------------|* To just refresh the devices lists, press the|'Mount/Unmount/Refresh' button while no|devices are selected on either drop-down menu|--------------------------------------------------|* To exit the program press 'Quit ${0##*/}'") 
+             --combo-values="* Select a device from the 'Mountable Devices'|drop-down menu and press the button labeled|'Mount/Unmount/Refresh' to mount it|--------------------------------------------------|* To unmount a device, select it from the|'Unmountable Devices' drop-down menu and|press the 'Mount/Unmount/Refresh' button|--------------------------------------------------|* To mount one device and unmount another one|simultaneously, select them both from their|drop-down menus and press the button labeled|'Mount/Unmount/Refresh'|--------------------------------------------------|* To just refresh the devices lists, press the|'Mount/Unmount/Refresh' button while no|devices are selected on either drop-down menu|--------------------------------------------------|* To exit the program press 'Quit ${0##*/}'") 
 
   xcode=$?
 
