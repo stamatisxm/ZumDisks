@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #
-#    Copyright (C) 2015-2016  Stamatis X. Mavrogeorgis
+#    Copyright (C) 2015-2017  Stamatis X. Mavrogeorgis
 #
 #    Author's Email: stamatis@zirconix.net
 #    Author's Website: http://www.istos.xyz
@@ -62,7 +62,7 @@ while [ $xcode -eq 0 ]; do {
 
   DEVICELIST=$(lsblk -pno KNAME,FSTYPE,TYPE,SIZE |
                grep 's[dr]' |
-               egrep -iv 'disk|swap' |
+               egrep -iv 'disk|swap| 1K$' |
                cut -f1 -d' ' |
                awk '{ print $1 }' |
                paste -s -d' ')
