@@ -20,11 +20,11 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# version 0.1.4 Fixed swap partition hiding
-# version 0.1.3 Added labels in mount list
-# version 0.1.2 Added messages in mount list
-# version 0.1.1 Improvements on initial built
-# version 0.1.0 Initial concept
+# version 0.1.4 - Fixed swap partition hiding
+# version 0.1.3 - Added labels in mount list
+# version 0.1.2 - Added messages in mount list
+# version 0.1.1 - Improvements on initial built
+# version 0.1.0 - Initial concept
 
 HELPSTRING="\
 * Select a device from the 'Mountable Devices'|\
