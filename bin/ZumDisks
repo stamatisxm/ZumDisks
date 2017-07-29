@@ -26,6 +26,26 @@
 # version 0.1.1 Improvements on initial built
 # version 0.1.0 Initial concept
 
+HELPSTRING="\
+* Select a device from the 'Mountable Devices'|\
+drop-down menu and press the button labeled|\
+'Mount/Unmount/Refresh' to mount it|\
+--------------------------------------------------|\
+* To unmount a device, select it from the|\
+'Unmountable Devices' drop-down menu and|\
+press the 'Mount/Unmount/Refresh' button|\
+--------------------------------------------------|\
+* To mount one device and unmount another one|\
+simultaneously, select them both from their|\
+drop-down menus and press the button labeled|\
+'Mount/Unmount/Refresh'|\
+--------------------------------------------------|\
+* To just refresh the devices lists, press the|\
+'Mount/Unmount/Refresh' button while no|\
+devices are selected on either drop-down menu|\
+--------------------------------------------------|\
+* To exit the program press 'Quit ${0##*/}'"
+
 showVersion() {
   echo $(grep '^# version' $(which ${0##*/}) | cut -f3 -d\  | sort -u | tail -1)
 }
@@ -100,7 +120,7 @@ while [ $xcode -eq 0 ]; do {
              --add-combo="Unmountable Devices:" \
              --combo-values="$([[ -n $TMPUNMOUNTABLE ]] && for key in $TMPUNMOUNTABLE; do echo -n "|$key ${LDEVICE[$key]}"; done)" \
              --add-combo="Click Drop-down Help:" \
-             --combo-values="* Select a device from the 'Mountable Devices'|drop-down menu and press the button labeled|'Mount/Unmount/Refresh' to mount it|--------------------------------------------------|* To unmount a device, select it from the|'Unmountable Devices' drop-down menu and|press the 'Mount/Unmount/Refresh' button|--------------------------------------------------|* To mount one device and unmount another one|simultaneously, select them both from their|drop-down menus and press the button labeled|'Mount/Unmount/Refresh'|--------------------------------------------------|* To just refresh the devices lists, press the|'Mount/Unmount/Refresh' button while no|devices are selected on either drop-down menu|--------------------------------------------------|* To exit the program press 'Quit ${0##*/}'") 
+             --combo-values="$HELPSTRING")
 
   xcode=$?
 
