@@ -1,0 +1,184 @@
+#!/bin/bash
+
+#
+#    Copyright (C) 2015-2023 Stamatis X. Mavrogeorgis
+#
+#    Author's Email: stamatis@zirconix.net
+#    Author's Website: http://istos.stamatis.uk
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+# version 0.2.7 - 20240511183449 - Cosmetic changes
+# version 0.2.6 - 20231228130142 - Added encrypted devices view along remote ones
+# version 0.2.5 - 20231112131821 - Added device power off facility
+# version 0.2.4 - 20230614104253 - Tidy up some loose cannon code
+# version 0.2.3 - 20230201123234 - Added sponge error message and modified UI colours
+# version 0.2.2 - 20220216234656 - Added Remotely Mounted devices view
+# version 0.2.1 - 20220208123049 - Refined the non-unmountable devices selection
+# version 0.2.0 - 20220207222946 - YAD (Modified to use YAD instead of ZENITY)
+# version 0.1.7 - 20210801080108 - Fixed disconnected but appearing bug!!!
+# version 0.1.6 - 20200702070207 - Added raspberry pi support
+# version 0.1.5 - 20190603060306 - Changed some variable names
+# version 0.1.4 - 20180504050405 - Fixed swap partition hiding
+# version 0.1.3 - 20170405040504 - Added labels in mount list
+# version 0.1.2 - 20160306030603 - Added messages in mount list
+# version 0.1.1 - 20150901020702 - Improvements on initial built
+# version 0.1.0 - 20150408022101 - Initial concept (Zenity version
+
+MYICON=$HOME/.local/share/icons/${0##*/}.png
+
+HELPSTRING="!${0##*/}(Not so much) HELP!--------------------------------------------------!* Select a device from the 'Mountable Devices'!drop-down menu and press the button labeled!'Mount/Unmount/🗘/PowerOff' to mount it!--------------------------------------------------!* To unmount a device, select it from the!'Unmountable Devices' drop-down menu and!press the 'Mount/Unmount/🗘/PowerOff' button!--------------------------------------------------!* To mount one device and unmount another one!simultaneously, select them both from their!drop-down menus and press the button labeled!'Mount/Unmount/🗘/PowerOff'!--------------------------------------------------!* To just refresh the devices lists, press the!'Mount/Unmount/🗘/PowerOff' button while no!devices are selected on either drop-down menu!--------------------------------------------------!* To exit the program press 'Close'"
+
+showVersion() {
+  echo $(grep '^# version' $(which ${0##*/}) | cut -f3 -d\  | sort -u | tail -1)
+}
+
+[[ $1 == '-V' ]] || [[ $1 == '-v' ]] && showVersion && exit
+
+[[ -x $(which gxmessage) ]] && g='g'
+
+MESSAGECMD="${g}xmessage"
+ZMSGDIM01='--width=320 --height=160'
+ZMSGDIM02='--width=320 --height=192'
+ZMSGDIM03='--width=400 --height=160'
+AOKBG='#000000'
+AOKFG='#00FF00'
+WRNBG='#000000'
+WRNFG='#FF7F00'
+ERRBG='#000000'
+ERRFG='#FF0000'
+INFBG='#000000'
+INFFG='#FFFF00'
+
+[[ ! -x $(which yad) ]] && $MESSAGECMD -title "${0##*/}" "${0##*/} requires yad to be installed on this system!" && exit || YADCMD="yad --window-icon=$MYICON"
+[[ ! -x $(which sponge) ]] && $MESSAGECMD -title "${0##*/}" "${0##*/} requires sponge to be installed on this system!" && exit || YADCMD="yad --window-icon=$MYICON"
+
+[[ $(pgrep -au $USER yad | grep "\-\-name=${0##*/}") ]] && { yad 2>/dev/null --error --text "${0##*/} is already running!" & } && exit
+
+MYVERSION=$(grep '^# version' $0 | cut -f3 -d\  | sort -r | head -1)
+
+swxstyle="gksudo -S"
+swmstyle="--"
+swdstyle=""
+
+[[ -x $(which udisksctl) ]] && swxstyle='' && mntctl='ctl' && swmstyle="" && swdstyle=" -b"
+
+DEV2LOOK4='/dev/mmcblk|/dev/hd|/dev/s[dr]'
+DSK2LOOK4='disk|swap| 1K$'
+MTD2LOOK4=' / | /boot.* | /tmp.* | /srv | /lib.* | /opt | /home.* | /usr.* | /run.* | /var.* '
+UDISKSMOUNTCMD="udisks${mntctl} ${swmstyle}mount$swdstyle"
+UDISKSUNMOUNTCMD="udisks${mntctl} ${swmstyle}unmount$swdstyle"
+UDISKSPOWEROFFCMD="udisks${mntctl} ${swmstyle}power-off$swdstyle"
+
+TMPDEVICELIST=/dev/shm/sd_ldevices
+MESSAGESFILE=/dev/shm/zumdisks_errors && touch $MESSAGESFILE
+
+xcode=0
+
+while [ $xcode -eq 0 ]; do {
+
+  TMPLDEVICELIST=$TMPDEVICELIST
+
+  DEVICELIST=$(lsblk -pno KNAME,FSTYPE,TYPE,SIZE | egrep "$DEV2LOOK4" | egrep -iv "$DSK2LOOK4" | cut -f1 -d' ' | awk '{ print $1 }' | paste -s -d' ')
+
+  { ls 2>/dev/null --full-time /dev/disk/by-label || ls 2>/dev/null --full-time /dev/disk/by-uuid || ls 2>/dev/null --full-time /dev/disk/by-id; } | tail -n +2 | awk '{ print $9,$11 }' | sed -e 's@../@@g' -e 's@ @ /dev/@g' | awk '{ print $2, $1 }' | sort >$TMPLDEVICELIST
+
+  declare -A LDEVICE
+
+  for i in $DEVICELIST; do LDEVICE[$i]=$(grep "$i " $TMPLDEVICELIST | cut -f2 -d' '); done
+  for key in "${!LDEVICE[@]}"; do echo $key ${LDEVICE[$key]}; done >$TMPLDEVICELIST
+
+  TMPMOUNTED=$(mount | egrep "$DEV2LOOK4" | cut -f1 -d' ' | sort | paste -s -d'|')
+
+  TMPUNMOUNTABLE=$(mount | egrep "$DEV2LOOK4" | egrep -v "$MTD2LOOK4" | cut -f1 -d' ' | sort | paste -s -d' ')
+
+  TMPMOUNTABLE=$(egrep -v "$TMPMOUNTED" $TMPLDEVICELIST | paste -s -d'!')
+
+  MOUNTEDDEVS="$(df 2>/dev/null -Th | egrep "$DEV2LOOK4" | awk '{ print $2,$3,$6,$1,$7 }' | sort | paste -s -d'!')"
+
+  MOUNTEDLIST="${MOUNTEDDEVS//!/}"
+
+  RMOUNTEDDIRS="$(mount | egrep 'fuse.cryfs|fuse.sshfs' | awk '{ print $1" ⇨ "$3, $6 }' | sed -e 's@\s(.*,\?ro[,)].*$@ [RO]@' -e 's@\s(.*,\?rw[,)].*$@ [RW]@' | paste -s -d'!')"
+  RMOUNTEDLIST="${RMOUNTEDDIRS//!/}"
+
+  SCSIMOUNTED=$(mount)
+  SDOFFABLE=$(for i in $(lsblk -SlpnoNAME); do echo $SCSIMOUNTED |& grep 2>/dev/null 1>&2 "$i" || echo $i ;done)
+  SDOFFABLE=$(echo $SDOFFABLE | sed -e 's@\s@!@g')
+
+# DEBUG (CAN BE DELETED)
+# echo $SDOFFABLE # && exit
+
+  NUMBG='#000000'
+  NUMFG='#B0B0B0'
+
+  YADOPERATION=$($YADCMD --no-escape \
+             --button="Mount/Unmount/🗘/PowerOff":0 \
+             --button="Clear Messages":2 \
+             --button="gtk-close":1 \
+             --title="${0##*/} $MYVERSION" \
+             --name="${0##*/} $MYVERSION" \
+             --text="$([[ -n $MOUNTEDLIST ]] && echo "<b><span background='#003F00' color='#FFFFFF'>Mounted Devices [ <span color='$NUMFG'>Grey</span>: Non-Unmountable ]</span></b>\n")$(IFS=''; for i in ${MOUNTEDLIST[@]}; do [[ $MTD2LOOK4 =~ ${i##*\ } ]] && echo "<span background='$NUMBG' color='$NUMFG'>$i</span>" || echo "<span background='$AOKBG' color='$AOKFG'>$i</span>"; done; echo "\n<b><span background='#001F3F' color='#FF7F00'>Encrypted &amp; Remote Mounted Devices [View Only]</span></b>\n")$(IFS=''; for i in ${RMOUNTEDLIST[@]}; do echo "<span background='$INFBG' color='$INFFG'>$i</span>"; done; echo "\n<b><span background='#7F0000' color='#FFFFFF'>Device Action Messages</span></b><span background='$AOKBG' color='$WRNFG'>"; cat $MESSAGESFILE; echo '</span>')" \
+             --fixed \
+             --form \
+             --field='Mountable Devices:'CB "$([[ -n $TMPMOUNTABLE ]] && for key in "$TMPMOUNTABLE"; do echo -n "!$key ${LDEVICE[$key]}"; done)" \
+             --field='Unmountable Devices:'CB "$([[ -n $TMPUNMOUNTABLE ]] && for key in $TMPUNMOUNTABLE; do echo -n "!$key ${LDEVICE[$key]}"; done)" \
+             --field='Switchable-Off Devices:'CB "!$SDOFFABLE" \
+             --field='Help:'CB "$HELPSTRING" 2>/dev/null)
+
+  xcode=$?
+
+###### SCSIMOUNTED=$TMPDIR/SCSIDEVICES
+###### mount |& sponge $TMPDIR/SCSIDEVICES; for i in $(lsblk -SlpnoNAME); do grep 2>/dev/null 1>&2 "$i" $TMPDIR/SCSIDEVICES || echo $i ;done
+
+  [[ $xcode -eq 2 ]] && sponge $MESSAGESFILE && xcode=0 && continue
+
+  echo $YADOPERATION
+
+  YADOPERATION=$(echo $YADOPERATION | cut -f1-4 -d'|')
+
+  TOMOUNT=$(echo $YADOPERATION | cut -f1 -d'|' | cut -f1 -d' ')
+  TOUNMOUNT=$(echo $YADOPERATION | cut -f2 -d'|' | cut -f1 -d' ')
+  TOPOWEROFF=$(echo $YADOPERATION | cut -f3 -d'|' | cut -f1 -d' ')
+
+  [[ -n $TOMOUNT ]] && \
+  [[ -b $TOMOUNT ]] && \
+  { [[ -n $swxstyle ]] && \
+  $swxstyle "$UDISKSMOUNTCMD $TOMOUNT" >>$MESSAGESFILE 2>&1 || \
+  $UDISKSMOUNTCMD $TOMOUNT >>$MESSAGESFILE 2>&1; }
+
+  [[ -n $TOUNMOUNT ]] && \
+  [[ -b $TOUNMOUNT ]] && \
+  { [[ -n $swxstyle ]] && \
+  $swxstyle "$UDISKSUNMOUNTCMD $TOUNMOUNT" >>$MESSAGESFILE 2>&1 || \
+  $UDISKSUNMOUNTCMD $TOUNMOUNT >>$MESSAGESFILE 2>&1; }
+
+  [[ -n $TOPOWEROFF ]] && \
+  [[ -b $TOPOWEROFF ]] && \
+  { [[ -n $swxstyle ]] && \
+  $swxstyle "$UDISKSPOWEROFFCMD $TOPOWEROFF" && echo "Powered off device $TOPOWEROFF." >>$MESSAGESFILE 2>&1 || \
+  $UDISKSPOWEROFFCMD $TOPOWEROFF && echo "Powered off device $TOPOWEROFF." >>$MESSAGESFILE 2>&1; }
+
+  unset DEVICELIST LDEVICE TMPLDEVICELIST \
+	  TMPMOUNTABLE TMPMOUNTED TMPUNMOUNTABLE\
+	  TOMOUNT TOUNMOUNT key YADOPERATION swxstyle\
+          SCSIMOUNTED SDOFFABLE
+
+  [[ -f $TMPDEVICELIST ]] && rm $TMPDEVICELIST
+
+}; done
+
+[[ -f $TMPDEVICELIST ]] && rm $TMPDEVICELIST
+[[ -f $MESSAGESFILE ]] && rm $MESSAGESFILE
+
