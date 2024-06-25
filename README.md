@@ -1,7 +1,7 @@
 # ZumDisks
 Zenity Assisted Mount / Unmount Devices
 
-<img alt="ZumDisks Logo" src="http://ideaware.xyz/wp-content/uploads/2016/01/ZumDisks.png" width="48px" height="48px" />
+<img alt="ZumDisks Logo" src="http://ideaware.stamatis.uk/wp-content/uploads/2016/01/ZumDisks.png" width="48px" height="48px" />
 
 ## ZumDisks – { Mount / Unmount Block Devices }
 ZumDisks is a simple Zenity front-end to udisks and udisksctl, useful for handling the mounting / unmounting of partitions on internal and removable disks. The interface is simple and self explanatory.
@@ -10,7 +10,7 @@ ZumDisks is a simple Zenity front-end to udisks and udisksctl, useful for handli
 
 This is the interface of ZumDisks:
 
-<img alt="ZumDisks Interface" src="http://ideaware.xyz/wp-content/uploads/2016/01/ZumDisks-SShot.png" />
+<img alt="ZumDisks Interface" src="http://ideaware.stamatis.uk/wp-content/uploads/2016/01/ZumDisks-SShot.png" />
 
 The “Mountable Devices” is a drop-down that displays the partitions (internal and removable) that can be mounted at runtime. To mount a device select it from the drop-down and click on the “Mount/Unmount/Refresh” button.
 
@@ -24,7 +24,7 @@ Lastly, there is a help drop-down menu, labelled “Click drop-down Help”, sum
 
 
 ### { Program Setup }
-This program is going to be installed by default in your **$HOME/bin** directory. If you have not set your **$HOME/bin** in the **$PATH**, see [this](http://istos.xyz/linux/include-homebin-in-any-desktop-environment/ "Include $HOME/bin in any Desktop Environment") or [this snippet](http://istos.xyz/linux/include-homebin-in-the-path-for-bash-shell "Setup your $HOME/bin in the $PATH") for details.
+This program is going to be installed by default in your **$HOME/bin** directory. If you have not set your **$HOME/bin** in the **$PATH**, see [this](http://istos.stamatis.uk/linux/include-homebin-in-any-desktop-environment/ "Include $HOME/bin in any Desktop Environment") or [this snippet](http://istos.stamatis.uk/linux/include-homebin-in-the-path-for-bash-shell "Setup your $HOME/bin in the $PATH") for details.
 
 To run this program, you need to have the following packages installed in your system (Check with your package manager):
 
