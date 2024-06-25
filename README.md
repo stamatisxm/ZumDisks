@@ -10,7 +10,8 @@ ZumDisks is a simple Zenity front-end to udisks and udisksctl, useful for handli
 
 This is the interface of ZumDisks:
 
-<img alt="ZumDisks Interface" src="http://ideaware.stamatis.uk/wp-content/uploads/2016/01/ZumDisks-SShot.png" />
+<!-- img alt="ZumDisks Interface" src="http://ideaware.stamatis.uk/wp-content/uploads/2016/01/ZumDisks-SShot.png" /!-->
+![image](https://github.com/stamatisxm/ZumDisks/assets/12468393/7c67749b-c5ea-4506-8726-77546956862f)
 
 The “Mountable Devices” is a drop-down that displays the partitions (internal and removable) that can be mounted at runtime. To mount a device select it from the drop-down and click on the “Mount/Unmount/Refresh” button.
 
